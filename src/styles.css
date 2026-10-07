@@ -34,3 +34,8 @@ footer{align-items:center}
 .ship-bubble{grid-template-columns:48px 1fr;grid-template-rows:24px 22px;width:178px;min-height:58px;padding:4px 9px 4px 4px}
 .ship-side-icon{grid-row:1 / span 2!important;display:flex!important;align-items:center!important;justify-content:center!important;width:44px!important;height:40px!important;border-radius:8px!important;background:#12304a!important;border:1px solid #8fc9f8!important}
 .ship-side-icon svg{width:42px;height:25px;display:block}
+
+
+/* Improve route destination/departure text visibility */
+.route-box strong{color:#8fd0ff!important;text-shadow:0 1px 3px #000!important}
+.route-box .align-right strong{color:#9ad8ff!important}
