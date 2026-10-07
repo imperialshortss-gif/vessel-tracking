@@ -45,3 +45,13 @@ footer{align-items:center}
 .route-box>div:not(.line){background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;min-height:0!important;box-shadow:none!important}
 .route-box span{background:transparent!important;border:0!important}
 .route-box strong{background:transparent!important;border:0!important}
+
+
+/* Clean map endpoint markers: no white popup rectangles */
+.endpoint-marker{background:transparent!important;border:0!important;overflow:visible!important}
+.endpoint-label{display:flex;align-items:center;gap:7px;height:28px;white-space:nowrap;background:transparent!important;border:0!important;box-shadow:none!important;color:#dff1ff!important;font-size:11px;font-weight:800;text-shadow:0 2px 4px #000,0 0 5px #000}
+.endpoint-label.destination{justify-content:flex-end;flex-direction:row-reverse}
+.endpoint-label i{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#58a9ff;border:2px solid #fff;box-shadow:0 0 0 3px #0a2135,0 2px 8px #000}
+.endpoint-label.destination i{background:#4de0a0}
+.endpoint-label span{background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+.leaflet-popup,.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#071725!important;color:#eaf5ff!important}
