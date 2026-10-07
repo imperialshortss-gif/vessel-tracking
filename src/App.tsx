@@ -18,7 +18,18 @@ function interpolate(v:Voyage){
   const totalDist=distance(v.originLat,v.originLng,v.destLat,v.destLng);
   const traveled=Math.min(totalDist,elapsed*v.speed);
   const p=totalDist?traveled/totalDist:0;
-  return {lat:v.originLat+(v.destLat-v.originLat)*p,lng:v.originLng+(v.destLng-v.originLng)*p,p,elapsed,totalDist,traveled,remaining:Math.max(0,totalDist-traveled)};
+  const lat1=v.originLat*Math.PI/180,lon1=v.originLng*Math.PI/180,lat2=v.destLat*Math.PI/180,lon2=v.destLng*Math.PI/180;
+  const a=Math.sin((lat2-lat1)/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin((lon2-lon1)/2)**2;
+  const central=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  const sinCentral=Math.sin(central);
+  const A=sinCentral?Math.sin((1-p)*central)/sinCentral:1-p;
+  const B=sinCentral?Math.sin(p*central)/sinCentral:p;
+  const x=A*Math.cos(lat1)*Math.cos(lon1)+B*Math.cos(lat2)*Math.cos(lon2);
+  const y=A*Math.cos(lat1)*Math.sin(lon1)+B*Math.cos(lat2)*Math.sin(lon2);
+  const z=A*Math.sin(lat1)+B*Math.sin(lat2);
+  const lat=Math.atan2(z,Math.sqrt(x*x+y*y))*180/Math.PI;
+  const lng=Math.atan2(y,x)*180/Math.PI;
+  return {lat,lng,p,elapsed,totalDist,traveled,remaining:Math.max(0,totalDist-traveled)};
 }
 function distance(a:number,b:number,c:number,d:number){const R=3440.065;const p1=a*Math.PI/180,p2=c*Math.PI/180,dp=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180;const x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function Fit({v}:{v:Voyage}){const map=useMap();useEffect(()=>{map.fitBounds([[v.originLat,v.originLng],[v.destLat,v.destLng]],{padding:[30,30]})},[map,v]);return null}
