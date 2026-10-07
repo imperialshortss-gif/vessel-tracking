@@ -25,3 +25,6 @@ footer{align-items:center}
 .footer-login:hover{color:#a9c8e5}
 @media(max-width:900px){.hero{display:block}.hero-ship{margin-top:24px;min-height:250px}.hero-ship .status-card{right:14px;bottom:14px}}
 @media(max-width:560px){.hero-ship{min-height:220px}.hero-ship .status-card{min-width:0;left:14px;right:14px}.footer-login{font-size:9px}}
+
+/* Make vessel name on map label highly visible */
+.ship-bubble small{color:#8fd0ff!important;font-size:11px!important;font-weight:800!important;text-shadow:0 1px 3px #000!important}
