@@ -39,3 +39,9 @@ footer{align-items:center}
 /* Improve route destination/departure text visibility */
 .route-box strong{color:#8fd0ff!important;text-shadow:0 1px 3px #000!important}
 .route-box .align-right strong{color:#9ad8ff!important}
+
+
+/* Clean route labels: remove the small rectangular blocks behind departure/destination */
+.route-box>div:not(.line){background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;min-height:0!important;box-shadow:none!important}
+.route-box span{background:transparent!important;border:0!important}
+.route-box strong{background:transparent!important;border:0!important}
