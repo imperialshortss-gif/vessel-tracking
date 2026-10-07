@@ -33,7 +33,7 @@ export default function App(){
  const [now,setNow]=useState(Date.now());
  const [user,setUser]=useState<User|null>(null);
  const [loginOpen,setLoginOpen]=useState(false);
- const [email,setEmail]=useState("");
+ const [username,setUsername]=useState("");
  const [password,setPassword]=useState("");
  const [loginBusy,setLoginBusy]=useState(false);
  const [showNew,setShowNew]=useState(false);
@@ -45,14 +45,19 @@ export default function App(){
  const eta=pos&&selected?new Date(new Date(selected.departure).getTime()+pos.totalDist/selected.speed*3600000):null;
  const route=selected?[[selected.originLat,selected.originLng],[selected.destLat,selected.destLng]] as [number,number][]:[];
  const progress=pos?Math.round(pos.p*100):0;
- const login=async()=>{setLoginBusy(true);setMessage("");const {data,error}=await supabase.auth.signInWithPassword({email,password});setLoginBusy(false);if(error){setMessage(error.message);return;}setUser(data.user);setEmail("");setPassword("");setLoginOpen(false);setMessage("Admin login successful.");};
+ const login=async()=>{setLoginBusy(true);setMessage("");
+   const {data:admin,error:lookupError}=await supabase.from("admin_users").select("email").eq("username",username.trim()).maybeSingle();
+   if(lookupError||!admin){setLoginBusy(false);setMessage("Invalid username or password.");return;}
+   const {data,error}=await supabase.auth.signInWithPassword({email:admin.email,password});
+   setLoginBusy(false);if(error){setMessage("Invalid username or password.");return;}
+   setUser(data.user);setUsername("");setPassword("");setLoginOpen(false);setMessage("Admin login successful.");};
  const logout=async()=>{await supabase.auth.signOut();setShowNew(false);setMessage("Signed out.");};
  const create=async()=>{if(!user){setLoginOpen(true);return;}const n:Voyage={id:"VT-"+String(Date.now()).slice(-6),name:form.name||"Unnamed Vessel",origin:form.origin,destination:form.destination,originLat:Number(form.originLat),originLng:Number(form.originLng),destLat:Number(form.destLat),destLng:Number(form.destLng),departure:new Date(form.departure).toISOString(),speed:Number(form.speed)||13,status:"active"};if(!n.origin||!n.destination||![n.originLat,n.originLng,n.destLat,n.destLng].every(Number.isFinite))return alert("Please enter valid voyage details and coordinates.");
 const {error}=await supabase.from("voyages").insert({id:n.id,name:n.name,origin:n.origin,destination:n.destination,origin_lat:n.originLat,origin_lng:n.originLng,dest_lat:n.destLat,dest_lng:n.destLng,departure:n.departure,speed:n.speed,status:n.status});
 if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(n);setShowNew(false);setMessage("Voyage saved to Supabase.");};
  return <div className="app">
   <header><div className="brand"><ShipWheel size={28}/><div><strong>VesselTrack</strong><span>Custom Voyage Monitoring</span></div></div><div className="header-actions">{user?<button className="ghost" onClick={logout}><LogOut size={17}/> Sign out</button>:<button className="ghost" onClick={()=>setLoginOpen(!loginOpen)}><LogIn size={17}/> Admin Login</button>}</div></header>
-  <main>{message&&<div className="supabase-message">{message}</div>}{loading&&<div className="supabase-message">Loading voyages…</div>}{loginOpen&&!user&&<section className="admin-panel login-panel"><div className="panel-title"><div><span className="eyebrow">SECURE ACCESS</span><h2>Admin login</h2></div></div><div className="form-grid login-grid"><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"/></label><button className="primary create" onClick={login} disabled={loginBusy}>{loginBusy?"Signing in…":<><LogIn size={17}/> Sign in</>}</button></div></section>}
+  <main>{message&&<div className="supabase-message">{message}</div>}{loading&&<div className="supabase-message">Loading voyages…</div>}{loginOpen&&!user&&<section className="admin-panel login-panel"><div className="panel-title"><div><span className="eyebrow">SECURE ACCESS</span><h2>Admin login</h2></div></div><div className="form-grid login-grid"><label>Username<input type="text" value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"/></label><button className="primary create" onClick={login} disabled={loginBusy}>{loginBusy?"Signing in…":<><LogIn size={17}/> Sign in</>}</button></div></section>}
    <section className="hero"><div><div className="eyebrow"><CircleDot size={12}/> SIMULATED LIVE TRACKING</div><h1>Monitor every voyage<br/><em>in real time.</em></h1><p>Admin-controlled vessel simulation with automatic position, distance and ETA calculations.</p></div><div className="status-card"><span>System status</span><b><i/>Simulation engine online</b><small>Updates every second in this preview</small></div></section>
    {user&&<section className="admin-panel"><div className="panel-title"><div><span className="eyebrow">ADMIN CONTROL</span><h2>Voyage management</h2></div><button className="primary" onClick={()=>setShowNew(!showNew)}><Plus size={18}/> New voyage</button></div>{showNew&&<div className="form-grid">
     {(["name","origin","destination","originLat","originLng","destLat","destLng","departure","speed"] as const).map(k=><label key={k}>{({name:"Vessel name",origin:"Origin",destination:"Destination",originLat:"Origin latitude",originLng:"Origin longitude",destLat:"Destination latitude",destLng:"Destination longitude",departure:"Departure date/time",speed:"Speed (knots)"} as any)[k]}<input type={k==="departure"?"datetime-local":"text"} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}<button className="primary create" onClick={create}><Play size={17}/> Start simulation</button>
