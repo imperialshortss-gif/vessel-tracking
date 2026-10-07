@@ -1,0 +1,56 @@
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import { Anchor, Gauge, Navigation, Play, Pause, Plus, ShipWheel, Clock3, Route, Settings, Search, CircleDot } from "lucide-react";
+
+type Voyage={id:string;name:string;origin:string;destination:string;originLat:number;originLng:number;destLat:number;destLng:number;departure:string;speed:number;status:"scheduled"|"active"|"paused"|"completed"};
+
+const demo:Voyage[]=[{id:"VT-001",name:"MV Ocean Star",origin:"Vancouver, Canada",destination:"Karachi, Pakistan",originLat:49.2827,originLng:-123.1207,destLat:24.8607,destLng:67.0011,departure:new Date(Date.now()-72*3600000).toISOString(),speed:13,status:"active"}];
+
+const shipIcon=L.divIcon({className:"ship-marker",html:"<div>🚢</div>",iconSize:[42,42],iconAnchor:[21,21]});
+
+function interpolate(v:Voyage){
+  const elapsed=Math.max(0,(Date.now()-new Date(v.departure).getTime())/3600000);
+  const totalDist=distance(v.originLat,v.originLng,v.destLat,v.destLng);
+  const traveled=Math.min(totalDist,elapsed*v.speed);
+  const p=totalDist?traveled/totalDist:0;
+  return {lat:v.originLat+(v.destLat-v.originLat)*p,lng:v.originLng+(v.destLng-v.originLng)*p,p,elapsed,totalDist,traveled,remaining:Math.max(0,totalDist-traveled)};
+}
+function distance(a:number,b:number,c:number,d:number){const R=3440.065;const p1=a*Math.PI/180,p2=c*Math.PI/180,dp=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180;const x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function Fit({v}:{v:Voyage}){const map=useMap();useEffect(()=>{map.fitBounds([[v.originLat,v.originLng],[v.destLat,v.destLng]],{padding:[30,30]})},[map,v]);return null}
+
+export default function App(){
+ const [voyages,setVoyages]=useState<Voyage[]>(()=>{try{return JSON.parse(localStorage.getItem("vt-voyages")||"null")||demo}catch{return demo}});
+ const [selected,setSelected]=useState(voyages[0]);
+ const [now,setNow]=useState(Date.now());
+ const [admin,setAdmin]=useState(false);
+ const [showNew,setShowNew]=useState(false);
+ const [form,setForm]=useState({name:"",origin:"",destination:"",originLat:"",originLng:"",destLat:"",destLng:"",departure:"",speed:"13"});
+ useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t)},[]);
+ useEffect(()=>localStorage.setItem("vt-voyages",JSON.stringify(voyages)),[voyages]);
+ const pos=selected?interpolate(selected):null;
+ const eta=pos&&selected?new Date(new Date(selected.departure).getTime()+pos.totalDist/selected.speed*3600000):null;
+ const route=selected?[[selected.originLat,selected.originLng],[selected.destLat,selected.destLng]] as [number,number][]:[];
+ const progress=pos?Math.round(pos.p*100):0;
+ const create=()=>{const n:Voyage={id:"VT-"+String(Date.now()).slice(-6),name:form.name||"Unnamed Vessel",origin:form.origin,destination:form.destination,originLat:Number(form.originLat),originLng:Number(form.originLng),destLat:Number(form.destLat),destLng:Number(form.destLng),departure:new Date(form.departure).toISOString(),speed:Number(form.speed)||13,status:"active"};if(!n.origin||!n.destination||![n.originLat,n.originLng,n.destLat,n.destLng].every(Number.isFinite))return alert("Please enter valid voyage details and coordinates.");setVoyages(x=>[n,...x]);setSelected(n);setShowNew(false)};
+ return <div className="app">
+  <header><div className="brand"><ShipWheel size={28}/><div><strong>VesselTrack</strong><span>Custom Voyage Monitoring</span></div></div><div className="header-actions"><button className="ghost" onClick={()=>setAdmin(!admin)}><Settings size={17}/>{admin?"Tracking View":"Admin"}</button></div></header>
+  <main>
+   <section className="hero"><div><div className="eyebrow"><CircleDot size={12}/> SIMULATED LIVE TRACKING</div><h1>Monitor every voyage<br/><em>in real time.</em></h1><p>Admin-controlled vessel simulation with automatic position, distance and ETA calculations.</p></div><div className="status-card"><span>System status</span><b><i/>Simulation engine online</b><small>Updates every second in this preview</small></div></section>
+   {admin&&<section className="admin-panel"><div className="panel-title"><div><span className="eyebrow">ADMIN CONTROL</span><h2>Voyage management</h2></div><button className="primary" onClick={()=>setShowNew(!showNew)}><Plus size={18}/> New voyage</button></div>{showNew&&<div className="form-grid">
+    {(["name","origin","destination","originLat","originLng","destLat","destLng","departure","speed"] as const).map(k=><label key={k}>{({name:"Vessel name",origin:"Origin",destination:"Destination",originLat:"Origin latitude",originLng:"Origin longitude",destLat:"Destination latitude",destLng:"Destination longitude",departure:"Departure date/time",speed:"Speed (knots)"} as any)[k]}<input type={k==="departure"?"datetime-local":"text"} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}<button className="primary create" onClick={create}><Play size={17}/> Start simulation</button>
+   </div>}<div className="voyage-list">{voyages.map(v=><button className={"voyage-row "+(selected?.id===v.id?"selected":"")} key={v.id} onClick={()=>setSelected(v)}><span className="dot"/><strong>{v.name}</strong><span>{v.origin} → {v.destination}</span><b>{v.status}</b></button>)}</div></section>}
+   <section className="workspace">
+    <div className="map-wrap">{selected&&<MapContainer center={[selected.originLat,selected.originLng]} zoom={3} scrollWheelZoom><TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/><Fit v={selected}/><Polyline positions={route} pathOptions={{color:"#5b8def",weight:3,dashArray:"8 9"}}/><Marker position={[selected.originLat,selected.originLng]}><Popup>Departure: {selected.origin}</Popup></Marker><Marker position={[selected.destLat,selected.destLng]}><Popup>Destination: {selected.destination}</Popup></Marker>{pos&&<Marker position={[pos.lat,pos.lng]} icon={shipIcon}><Popup><b>{selected.name}</b><br/>Simulated live position</Popup></Marker>}</MapContainer>}</div>
+    {selected&&pos&&<aside className="details"><div className="detail-top"><div><span className="eyebrow">ACTIVE VOYAGE</span><h2>{selected.name}</h2><p>{selected.origin} <span>→</span> {selected.destination}</p></div><span className="live"><i/> LIVE</span></div>
+      <div className="progress"><div><span>Voyage progress</span><b>{progress}%</b></div><div className="bar"><i style={{width:progress+"%"}}/></div></div>
+      <div className="metrics"><Metric icon={<Gauge/>} label="Speed" value={selected.speed.toFixed(1)+" kn"}/><Metric icon={<Navigation/>} label="Position" value={pos.lat.toFixed(4)+"°, "+pos.lng.toFixed(4)+"°"}/><Metric icon={<Route/>} label="Distance remaining" value={Math.round(pos.remaining).toLocaleString()+" NM"}/><Metric icon={<Clock3/>} label="Estimated arrival" value={eta?.toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})||"—"}/></div>
+      <div className="route-box"><div><span>DEPARTURE</span><strong>{selected.origin}</strong></div><div className="line"><i/><i/><i/></div><div className="align-right"><span>DESTINATION</span><strong>{selected.destination}</strong></div></div>
+      <div className="note"><Anchor size={17}/><span>Custom simulation. Position is calculated from voyage parameters and elapsed time; it is not AIS data.</span></div>
+    </aside>}
+   </section>
+  </main>
+  <footer><span>VesselTrack</span><span>Custom simulation platform • v0.1</span></footer>
+ </div>
+}
+function Metric({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="metric">{icon}<span>{label}</span><strong>{value}</strong></div>}
