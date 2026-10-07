@@ -37,7 +37,7 @@ export default function App(){
  const [password,setPassword]=useState("");
  const [loginBusy,setLoginBusy]=useState(false);
  const [showNew,setShowNew]=useState(false);
- const defaultDeparture=()=>{const d=new Date(Date.now()-new Date().getTimezoneOffset()*60000);return d.toISOString().slice(0,16)};
+ const defaultDeparture=()=>{const d=new Date(Date.now()-3*24*60*60*1000);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)};
  const [form,setForm]=useState({name:"",origin:"",destination:"",departure:defaultDeparture(),speed:"13"});
  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t)},[]);
  useEffect(()=>{supabase.auth.getSession().then(({data})=>setUser(data.session?.user??null));const {data}=supabase.auth.onAuthStateChange((_event,session)=>setUser(session?.user??null));return()=>data.subscription.unsubscribe()},[]);
@@ -83,4 +83,5 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
   <footer><span>VesselTrack</span><span>Custom simulation platform • v0.1</span></footer>
  </div>
 }
-function Metric({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="metric">{icon}<span>{label}</span><strong>{value}</strong></div>}
+function Metric({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="metric">{icon}<span>{label}</span><strong>{value}</strong></div>
+}
