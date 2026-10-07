@@ -55,3 +55,13 @@ footer{align-items:center}
 .endpoint-label.destination i{background:#4de0a0}
 .endpoint-label span{background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
 .leaflet-popup,.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#071725!important;color:#eaf5ff!important}
+
+
+/* Admin voyage list with delete action */
+.voyage-row{display:flex;gap:10px;align-items:center;text-align:left;background:#091c2c;border:1px solid #183248;color:#a9bacb;border-radius:9px;padding:7px 8px 7px 13px;cursor:default}
+.voyage-select{flex:1;min-width:0;display:grid;grid-template-columns:10px 180px 1fr auto;gap:10px;align-items:center;text-align:left;background:transparent;border:0;color:#a9bacb;padding:3px 0;cursor:pointer}
+.voyage-select strong{color:#e4edf6}.voyage-select b{text-transform:uppercase;font-size:9px;color:#62d9a0;letter-spacing:.1em}
+.delete-voyage{flex:none;border:1px solid #633b45;background:#321b23;color:#ff9aaa;border-radius:7px;padding:7px 10px;font-size:10px;font-weight:800;cursor:pointer}
+.delete-voyage:hover{background:#4a202b;border-color:#9b5261;color:#fff}
+.delete-voyage:disabled{opacity:.55;cursor:wait}
+@media(max-width:560px){.voyage-select{grid-template-columns:10px 1fr auto}.voyage-select span:not(.dot){grid-column:2;grid-row:2}.voyage-select b{grid-column:3;grid-row:1}.delete-voyage{padding:6px 8px}}
