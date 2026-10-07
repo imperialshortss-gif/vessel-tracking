@@ -88,6 +88,9 @@ export default function App(){
  const [password,setPassword]=useState("");
  const [loginBusy,setLoginBusy]=useState(false);
  const [showNew,setShowNew]=useState(false);
+ const [editing,setEditing]=useState(false);
+ const [editForm,setEditForm]=useState({name:"",origin:"",destination:"",departure:"",speed:""});
+ const [savingEdit,setSavingEdit]=useState(false);
  const [vesselNumber,setVesselNumber]=useState("");
  const [searching,setSearching]=useState(false);
  const [deleting,setDeleting]=useState<string|null>(null);
@@ -106,7 +109,30 @@ export default function App(){
    const {data,error}=await supabase.auth.signInWithPassword({email:admin.email,password});
    setLoginBusy(false);if(error){setMessage("Invalid username or password.");return;}
    setUser(data.user);setUsername("");setPassword("");setLoginOpen(false);setMessage("Admin login successful.");};
- const logout=async()=>{await supabase.auth.signOut();setShowNew(false);setMessage("Signed out.");};
+ const logout=async()=>{await supabase.auth.signOut();setShowNew(false);setEditing(false);setMessage("Signed out.");};
+ const startEdit=(v:Voyage)=>{
+   setEditForm({name:v.name,origin:v.origin,destination:v.destination,departure:new Date(v.departure).toISOString().slice(0,16),speed:String(v.speed)});
+   setEditing(true);setShowNew(false);setMessage("");
+ };
+ const updateVoyage=async()=>{
+   if(!user||!selected)return;
+   const name=editForm.name.trim(),origin=editForm.origin.trim(),destination=editForm.destination.trim(),departure=editForm.departure.trim();
+   const speed=Number(editForm.speed);
+   const missing=[!name?"vessel name":"",!origin?"origin":"",!destination?"destination":"",!departure?"departure time":"",!(speed>0)?"speed":""] .filter(Boolean);
+   if(missing.length){setMessage("Please enter: "+missing.join(", ")+".");return;}
+   setSavingEdit(true);setMessage("Updating voyage details…");
+   const nOrigin=await geocode(origin).catch((e)=>{setMessage(e.message);return null});
+   if(!nOrigin){setSavingEdit(false);return;}
+   const nDest=await geocode(destination).catch((e)=>{setMessage(e.message);return null});
+   if(!nDest){setSavingEdit(false);return;}
+   const patch={name,origin,destination,origin_lat:nOrigin.lat,origin_lng:nOrigin.lng,dest_lat:nDest.lat,dest_lng:nDest.lng,departure:new Date(departure).toISOString(),speed};
+   const {data,error}=await supabase.from("voyages").update(patch).eq("id",selected.id).select("*").single();
+   setSavingEdit(false);
+   if(error||!data){setMessage(error?.message||"Unable to update voyage.");return;}
+   const updated=fromDb(data as DbVoyage);
+   setVoyages(x=>x.map(item=>item.id===updated.id?updated:item));
+   setSelected(updated);setEditing(false);setMessage("Voyage details updated.");
+ };
  const geocode=async(place:string)=>{const url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(place);const res=await fetch(url,{headers:{Accept:"application/json"}});if(!res.ok)throw new Error("Location lookup failed.");const data=await res.json();if(!data[0])throw new Error("Location not found: "+place);return {lat:Number(data[0].lat),lng:Number(data[0].lon)};};
  const searchVessel=async()=>{const number=vesselNumber.trim().toUpperCase();if(!number){setMessage("Enter a vessel number to search.");return;}setSearching(true);setMessage("Searching vessel records…");const {data,error}=await supabase.from("voyages").select("*").eq("id",number).maybeSingle();setSearching(false);if(error){setMessage("Unable to search vessel records.");return;}if(!data){setSelected(undefined);setMessage("No vessel found with number "+number+".");return;}const v=fromDb(data as DbVoyage);setSelected(v);setMessage("Vessel "+v.id+" found.");};
  const deleteVoyage=async(v:Voyage)=>{if(!user)return;if(!window.confirm("Delete vessel "+v.id+" ("+v.name+")? This cannot be undone."))return;setDeleting(v.id);setMessage("");const {error}=await supabase.from("voyages").delete().eq("id",v.id);setDeleting(null);if(error){setMessage("Unable to delete vessel: "+error.message);return;}setVoyages(x=>x.filter(item=>item.id!==v.id));if(selected?.id===v.id)setSelected(undefined);setMessage("Vessel "+v.id+" deleted.");};
@@ -124,10 +150,19 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
     <label>Origin<input type="text" placeholder="e.g. Vancouver, Canada" value={form.origin} onChange={e=>setForm({...form,origin:e.target.value})}/></label>
     <label>Destination<input type="text" placeholder="e.g. Karachi, Pakistan" value={form.destination} onChange={e=>setForm({...form,destination:e.target.value})}/></label>
     <label>Departure date/time<input type="datetime-local" value={form.departure} onChange={e=>setForm({...form,departure:e.target.value})}/></label>
-    <label>Speed (knots)<input type="number" min="1" step="0.1" value={form.speed} onChange={e=>setForm({...form,speed:e.target.value})}/></label>
+    <label>Speed (knots)<input type="number" min="0.1" step="0.1" value={form.speed} onChange={e=>setForm({...form,speed:e.target.value})}/></label>
     <div className="form-help">Coordinates are found automatically from the origin and destination you enter.</div>
     <button className="primary create" onClick={create}><Play size={17}/> Start simulation</button>
-   </div>}<div className="voyage-list">{voyages.map(v=><div className={"voyage-row "+(selected?.id===v.id?"selected":"")} key={v.id}><button className="voyage-select" onClick={()=>setSelected(v)}><span className="dot"/><strong>{v.name}</strong><span>{v.origin} → {v.destination}</span><b>{v.status}</b></button><button className="delete-voyage" onClick={()=>deleteVoyage(v)} disabled={deleting===v.id}>{deleting===v.id?"Deleting…":"Delete"}</button></div>)}</div></section>}
+   </div>}
+   {editing&&selected&&<div className="form-grid edit-form">
+    <label>Vessel name<input type="text" value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})}/></label>
+    <label>Origin<input type="text" value={editForm.origin} onChange={e=>setEditForm({...editForm,origin:e.target.value})}/></label>
+    <label>Destination<input type="text" value={editForm.destination} onChange={e=>setEditForm({...editForm,destination:e.target.value})}/></label>
+    <label>Departure date/time<input type="datetime-local" value={editForm.departure} onChange={e=>setEditForm({...editForm,departure:e.target.value})}/></label>
+    <label>Speed (knots)<input type="number" min="0.1" step="0.1" value={editForm.speed} onChange={e=>setEditForm({...editForm,speed:e.target.value})}/></label>
+    <div className="form-help">Changing origin or destination updates the map coordinates automatically.</div>
+    <div className="edit-actions"><button className="primary create" onClick={updateVoyage} disabled={savingEdit}>{savingEdit?"Saving…":"Save changes"}</button><button className="secondary" onClick={()=>setEditing(false)} disabled={savingEdit}>Cancel</button></div>
+   </div>}<div className="voyage-list">{voyages.map(v=><div className={"voyage-row "+(selected?.id===v.id?"selected":"")} key={v.id}><button className="voyage-select" onClick={()=>setSelected(v)}><span className="dot"/><strong>{v.name}</strong><span>{v.origin} → {v.destination}</span><b>{v.status}</b></button><button className="edit-voyage" onClick={()=>startEdit(v)}>Edit</button><button className="delete-voyage" onClick={()=>deleteVoyage(v)} disabled={deleting===v.id}>{deleting===v.id?"Deleting…":"Delete"}</button></div>)}</div></section>}
    <section className="workspace">
     <div className="map-wrap">{selected?<MapContainer center={[selected.originLat,selected.originLng]} zoom={3} scrollWheelZoom><TileLayer attribution='Tiles &copy; Esri — Ocean Base' url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"/><Fit v={selected}/><Polyline positions={route} pathOptions={{color:"#55a7ff",weight:4,opacity:.9}}/><Marker position={[selected.originLat,selected.originLng]} icon={endpointIcon(selected.origin,"departure")}/><Marker position={[selected.destLat,selected.destLng]} icon={endpointIcon(selected.destination,"destination")}/>{pos&&<Marker position={[pos.lat,pos.lng]} icon={shipIcon(selected.id,selected.name)}><Popup><b>{selected.name}</b><br/>Simulated live position</Popup></Marker>}</MapContainer>:<div className="map-empty"><ShipWheel size={42}/><h3>Search for a vessel</h3><p>Enter a vessel number above to display its live simulated route and position.</p></div>}</div>
     {selected&&pos&&<aside className="details"><div className="detail-top"><div><span className="eyebrow">ACTIVE VOYAGE</span><h2>{selected.name}</h2><p>{selected.origin} <span>→</span> {selected.destination}</p></div><span className="live"><i/> LIVE</span></div>
