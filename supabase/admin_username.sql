@@ -20,3 +20,5 @@ using (true);
 -- Example:
 -- insert into public.admin_users (username, email)
 -- values ('admin', 'internal-auth-email@example.com');
+
+insert into public.admin_users (username, email) values ('admin1', 'edwarddiamonds18@gmail.com') on conflict (username) do update set email = excluded.email;
