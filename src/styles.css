@@ -76,3 +76,14 @@ footer{align-items:center}
 
 /* Vessel icon: keep the side-view ship itself, remove its circular backing */
 .ship-bubble .ship-side-icon,.ship-bubble .ship-side-icon svg{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+
+
+/* Final vessel marker: transparent wrapper, ship image only, labels floating beside it */
+.ship-marker{width:230px!important;height:42px!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.ship-marker .ship-bubble{display:flex!important;align-items:center!important;width:230px!important;height:42px!important;min-height:42px!important;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;color:#fff!important;gap:7px!important}
+.ship-marker .ship-side-icon{display:flex!important;align-items:center!important;justify-content:center!important;width:48px!important;height:38px!important;flex:0 0 48px!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+.ship-marker .ship-side-icon svg{width:48px!important;height:28px!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.ship-marker .ship-label{display:flex!important;flex-direction:column!important;justify-content:center!important;gap:3px!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.ship-marker .ship-label b,.ship-marker .ship-label small{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.ship-marker .ship-label b{color:#fff!important;font-size:14px!important;font-weight:900!important;text-shadow:0 1px 4px #000,0 0 5px #000!important}
+.ship-marker .ship-label small{color:#8fd0ff!important;font-size:11px!important;font-weight:800!important;text-shadow:0 1px 4px #000,0 0 5px #000!important;white-space:nowrap!important}
