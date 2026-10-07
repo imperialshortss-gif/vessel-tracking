@@ -87,3 +87,9 @@ footer{align-items:center}
 .ship-marker .ship-label b,.ship-marker .ship-label small{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
 .ship-marker .ship-label b{color:#fff!important;font-size:14px!important;font-weight:900!important;text-shadow:0 1px 4px #000,0 0 5px #000!important}
 .ship-marker .ship-label small{color:#8fd0ff!important;font-size:11px!important;font-weight:800!important;text-shadow:0 1px 4px #000,0 0 5px #000!important;white-space:nowrap!important}
+
+/* Colorful, high-contrast vessel marker */
+.ship-marker .ship-side-icon svg{width:58px!important;height:32px!important;filter:drop-shadow(0 2px 3px #000) drop-shadow(0 0 7px #ffb52e)!important;overflow:visible!important}
+.ship-marker .ship-side-icon{width:58px!important;flex-basis:58px!important}
+.ship-marker .ship-label b{color:#ffffff!important;text-shadow:0 2px 5px #000,0 0 7px #000!important}
+.ship-marker .ship-label small{color:#ffd66b!important;text-shadow:0 2px 5px #000,0 0 7px #000!important}
