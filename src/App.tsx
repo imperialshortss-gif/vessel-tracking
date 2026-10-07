@@ -113,7 +113,7 @@ export default function App(){
  const logout=async()=>{await supabase.auth.signOut();setShowNew(false);setEditing(false);setLoginOpen(false);setMessage("Signed out.");};
  const startEdit=(v:Voyage)=>{
    setEditForm({name:v.name,origin:v.origin,destination:v.destination,departure:new Date(v.departure).toISOString().slice(0,16),speed:String(v.speed)});
-   setEditing(true);setShowNew(false);setMessage("");
+   setSelected(v);setEditing(true);setShowNew(false);setMessage("");window.setTimeout(()=>document.getElementById("edit-voyage-form")?.scrollIntoView({behavior:"smooth",block:"center"}),0);
  };
  const updateVoyage=async()=>{
    if(!user||!selected)return;
@@ -155,7 +155,7 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
     <div className="form-help">Coordinates are found automatically from the origin and destination you enter.</div>
     <button className="primary create" onClick={create}><Play size={17}/> Start simulation</button>
    </div>}
-   {editing&&selected&&<div className="form-grid edit-form">
+   {editing&&selected&&<div id="edit-voyage-form" className="form-grid edit-form">
     <label>Vessel name<input type="text" value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})}/></label>
     <label>Origin<input type="text" value={editForm.origin} onChange={e=>setEditForm({...editForm,origin:e.target.value})}/></label>
     <label>Destination<input type="text" value={editForm.destination} onChange={e=>setEditForm({...editForm,destination:e.target.value})}/></label>
@@ -163,7 +163,7 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
     <label>Speed (knots)<input type="number" min="0.1" step="0.1" value={editForm.speed} onChange={e=>setEditForm({...editForm,speed:e.target.value})}/></label>
     <div className="form-help">Changing origin or destination updates the map coordinates automatically.</div>
     <div className="edit-actions"><button className="primary create" onClick={updateVoyage} disabled={savingEdit}>{savingEdit?"Saving…":"Save changes"}</button><button className="secondary" onClick={()=>setEditing(false)} disabled={savingEdit}>Cancel</button></div>
-   </div>}<div className="voyage-list">{voyages.map(v=><div className={"voyage-row "+(selected?.id===v.id?"selected":"")} key={v.id}><button className="voyage-select" onClick={()=>setSelected(v)}><span className="dot"/><strong>{v.name}</strong><span>{v.origin} → {v.destination}</span><b>{v.status}</b></button><button className="edit-voyage" onClick={()=>startEdit(v)}>Edit</button><button className="delete-voyage" onClick={()=>deleteVoyage(v)} disabled={deleting===v.id}>{deleting===v.id?"Deleting…":"Delete"}</button></div>)}</div></section>}
+   </div>}<div className="voyage-list">{voyages.map(v=><div className={"voyage-row "+(selected?.id===v.id?"selected":"")} key={v.id}><button className="voyage-select" onClick={()=>setSelected(v)}><span className="dot"/><strong>{v.name}</strong><span>{v.origin} → {v.destination}</span><b>{v.status}</b></button><button type="button" className="edit-voyage" onClick={(e)=>{e.stopPropagation();startEdit(v)}}>Edit</button><button type="button" className="delete-voyage" onClick={(e)=>{e.stopPropagation();deleteVoyage(v)}} disabled={deleting===v.id}>{deleting===v.id?"Deleting…":"Delete"}</button></div>)}</div></section>}
    <section className="workspace">
     <div className="map-wrap">{selected?<MapContainer center={[selected.originLat,selected.originLng]} zoom={3} scrollWheelZoom><TileLayer attribution='Tiles &copy; Esri — Ocean Base' url="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}"/><Fit v={selected}/><Polyline positions={route} pathOptions={{color:"#55a7ff",weight:4,opacity:.9}}/><Marker position={[selected.originLat,selected.originLng]} icon={endpointIcon(selected.origin,"departure")}/><Marker position={[selected.destLat,selected.destLng]} icon={endpointIcon(selected.destination,"destination")}/>{pos&&<Marker position={[pos.lat,pos.lng]} icon={shipIcon(selected.id,selected.name)}><Popup><b>{selected.name}</b><br/>Simulated live position</Popup></Marker>}</MapContainer>:<div className="map-empty"><ShipWheel size={42}/><h3>Search for a vessel</h3><p>Enter a vessel number above to display its live simulated route and position.</p></div>}</div>
     {selected&&pos&&<aside className="details"><div className="detail-top"><div><span className="eyebrow">ACTIVE VOYAGE</span><h2>{selected.name}</h2><p>{selected.origin} <span>→</span> {selected.destination}</p></div><span className="live"><i/> LIVE</span></div>
