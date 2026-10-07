@@ -65,3 +65,11 @@ footer{align-items:center}
 .delete-voyage:hover{background:#4a202b;border-color:#9b5261;color:#fff}
 .delete-voyage:disabled{opacity:.55;cursor:wait}
 @media(max-width:560px){.voyage-select{grid-template-columns:10px 1fr auto}.voyage-select span:not(.dot){grid-column:2;grid-row:2}.voyage-select b{grid-column:3;grid-row:1}.delete-voyage{padding:6px 8px}}
+
+
+/* Remove Leaflet's default marker shadow/halo behind the vessel icon */
+.ship-marker,
+.ship-marker.leaflet-marker-icon,
+.ship-marker.leaflet-div-icon{background:transparent!important;border:0!important;box-shadow:none!important}
+.ship-marker::before,.ship-marker::after{display:none!important;content:none!important}
+.ship-marker .ship-bubble{box-shadow:5px 5px 22px #0009,0 0 0 2px #173b57!important}
