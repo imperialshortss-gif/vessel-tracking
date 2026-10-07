@@ -10,3 +10,18 @@
 .route-box span{color:#72a8df!important;font-weight:800!important;margin-bottom:6px!important}
 .route-box strong{display:block;color:#fff!important;font-weight:800!important;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
 .line{height:2px!important;background:#376486!important}
+
+/* Header ship image and compact footer admin access */
+.hero{align-items:stretch;min-height:330px}
+.hero-copy{flex:1;display:flex;flex-direction:column;justify-content:center}
+.hero-ship{flex:1.15;min-height:300px;position:relative;border:1px solid #1d3d57;border-radius:18px;overflow:hidden;background-image:url("https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=1400&q=85");background-size:cover;background-position:center}
+.hero-ship-overlay{position:absolute;inset:0;background:linear-gradient(90deg,#061522cc 0%,#06152222 48%,#06152208 100%),linear-gradient(0deg,#06152299 0%,transparent 55%)}
+.hero-ship .status-card{position:absolute;right:18px;bottom:18px;z-index:2;min-width:230px;background:#071725e8;border-color:#456782}
+footer{align-items:center}
+.footer-brand{display:flex;flex-direction:column;gap:4px}
+.footer-brand strong{color:#b8cee2;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.footer-brand small{color:#5f7488;font-size:10px}
+.footer-login{display:flex;align-items:center;gap:5px;border:0;background:transparent;color:#637d92;font-size:10px;padding:5px 7px;cursor:pointer}
+.footer-login:hover{color:#a9c8e5}
+@media(max-width:900px){.hero{display:block}.hero-ship{margin-top:24px;min-height:250px}.hero-ship .status-card{right:14px;bottom:14px}}
+@media(max-width:560px){.hero-ship{min-height:220px}.hero-ship .status-card{min-width:0;left:14px;right:14px}.footer-login{font-size:9px}}
