@@ -93,3 +93,11 @@ footer{align-items:center}
 .ship-marker .ship-side-icon{width:58px!important;flex-basis:58px!important}
 .ship-marker .ship-label b{color:#ffffff!important;text-shadow:0 2px 5px #000,0 0 7px #000!important}
 .ship-marker .ship-label small{color:#ffd66b!important;text-shadow:0 2px 5px #000,0 0 7px #000!important}
+
+.edit-voyage{flex:none;border:1px solid #3b6078;background:#173b57;color:#cce9ff;border-radius:7px;padding:7px 10px;font-size:10px;font-weight:800;cursor:pointer}
+.edit-voyage:hover{background:#22516f;color:#fff}
+.edit-actions{grid-column:1/-1;display:flex;gap:10px;align-items:center}
+.secondary{border:1px solid #38505f;background:#17252f;color:#d6e3ea;border-radius:8px;padding:10px 15px;font-size:12px;font-weight:800;cursor:pointer}
+.secondary:hover{background:#223641}
+.secondary:disabled{opacity:.55;cursor:wait}
+@media(max-width:560px){.edit-voyage{padding:6px 8px}.edit-actions{flex-wrap:wrap}}
