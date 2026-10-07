@@ -109,7 +109,8 @@ export default function App(){
    const {data,error}=await supabase.auth.signInWithPassword({email:admin.email,password});
    setLoginBusy(false);if(error){setMessage("Invalid username or password.");return;}
    setUser(data.user);setUsername("");setPassword("");setLoginOpen(false);setMessage("Admin login successful.");};
- const logout=async()=>{await supabase.auth.signOut();setShowNew(false);setEditing(false);setMessage("Signed out.");};
+ const openAdminLogin=()=>{setLoginOpen(true);setMessage("");window.setTimeout(()=>document.getElementById("admin-login")?.scrollIntoView({behavior:"smooth",block:"start"}),0);};
+ const logout=async()=>{await supabase.auth.signOut();setShowNew(false);setEditing(false);setLoginOpen(false);setMessage("Signed out.");};
  const startEdit=(v:Voyage)=>{
    setEditForm({name:v.name,origin:v.origin,destination:v.destination,departure:new Date(v.departure).toISOString().slice(0,16),speed:String(v.speed)});
    setEditing(true);setShowNew(false);setMessage("");
@@ -141,7 +142,7 @@ const {error}=await supabase.from("voyages").insert({id:n.id,name:n.name,origin:
 if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(n);setShowNew(false);setMessage("Voyage saved to Supabase.");};
  return <div className="app">
   <header><div className="brand"><ShipWheel size={28}/><div><strong>VesselTrack</strong><span>Voyage Monitoring</span></div></div><div className="header-actions"></div></header>
-  <main>{message&&<div className="supabase-message">{message}</div>}{loading&&<div className="supabase-message">Loading voyages…</div>}{loginOpen&&!user&&<section className="admin-panel login-panel"><div className="panel-title"><div><span className="eyebrow">SECURE ACCESS</span><h2>Admin login</h2></div></div><div className="form-grid login-grid"><label>Username<input type="text" value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"/></label><button className="primary create" onClick={login} disabled={loginBusy}>{loginBusy?"Signing in…":<><LogIn size={17}/> Sign in</>}</button></div></section>}
+  <main>{message&&<div className="supabase-message">{message}</div>}{loading&&<div className="supabase-message">Loading voyages…</div>}{loginOpen&&!user&&<section id="admin-login" className="admin-panel login-panel"><div className="panel-title"><div><span className="eyebrow">SECURE ACCESS</span><h2>Admin login</h2></div></div><div className="form-grid login-grid"><label>Username<input type="text" value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password"/></label><button className="primary create" onClick={login} disabled={loginBusy}>{loginBusy?"Signing in…":<><LogIn size={17}/> Sign in</>}</button></div></section>}
    <section className="hero"><div className="hero-copy"><div className="eyebrow"><CircleDot size={12}/> LIVE TRACKING</div><h1>Monitor every voyage<br/><em>in real time.</em></h1><p>Track vessel movements, route progress and estimated arrival in real time.</p></div><div className="hero-ship" aria-label="Container ship at sea"><div className="hero-ship-overlay"></div><div className="status-card"><span>System status</span><b><i/>Tracking engine online</b><small>Updates every second</small></div></div></section>
    {!user&&<section className="search-panel"><div className="search-copy"><span className="eyebrow"><Navigation size={12}/> PUBLIC VESSEL SEARCH</span><h2>Track a vessel by vessel number</h2><p>Enter the vessel number provided by the administrator to view its current simulated position, route and voyage details.</p></div><div className="search-box"><input value={vesselNumber} onChange={e=>setVesselNumber(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==="Enter")searchVessel()}} placeholder="Enter vessel number, e.g. VT-1001"/><button className="primary" onClick={searchVessel} disabled={searching}>{searching?"Searching…":"Find vessel"}</button></div></section>}
    {user&&<section className="admin-panel"><div className="panel-title"><div><span className="eyebrow">ADMIN CONTROL</span><h2>Voyage management</h2></div><button className="primary" onClick={()=>setShowNew(!showNew)}><Plus size={18}/> New voyage</button></div>{showNew&&<div className="form-grid">
@@ -173,7 +174,7 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
     </aside>}
    </section>
   </main>
-  <footer><div className="footer-brand"><strong>VesselTrack</strong><small>Vessel monitoring platform • v0.1</small></div><button className="footer-login" onClick={()=>user?logout():setLoginOpen(!loginOpen)}>{user?<><LogOut size={13}/> Sign out</>:<><LogIn size={13}/> Admin Login</>}</button></footer>
+  <footer><div className="footer-brand"><strong>VesselTrack</strong><small>Vessel monitoring platform • v0.1</small></div><button type="button" className="footer-login" aria-label={user?"Sign out":"Open admin login"} onClick={()=>user?logout():openAdminLogin()}>{user?<><LogOut size={13}/> Sign out</>:<><LogIn size={13}/> Admin Login</>}</button></footer>
  </div>
 }
 function Metric({icon,label,value}:{icon:React.ReactNode;label:string;value:string}){return <div className="metric">{icon}<span>{label}</span><strong>{value}</strong></div>
