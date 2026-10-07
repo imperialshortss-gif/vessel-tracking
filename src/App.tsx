@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
-import { Anchor, Gauge, Navigation, Play, Pause, Plus, ShipWheel, Clock3, Route, Settings, Search, CircleDot } from "lucide-react";
+import { Anchor, Gauge, Navigation, Play, Plus, ShipWheel, Clock3, Route, Settings, CircleDot } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
 
 type Voyage={id:string;name:string;origin:string;destination:string;originLat:number;originLng:number;destLat:number;destLng:number;departure:string;speed:number;status:"scheduled"|"active"|"paused"|"completed"};
+type DbVoyage={id:string;name:string;origin:string;destination:string;origin_lat:number;origin_lng:number;dest_lat:number;dest_lng:number;departure:string;speed:number;status:Voyage["status"]};
+const supabase=createClient("https://lolbrqyvwedtaksytalu.supabase.co","sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO");
+const fromDb=(v:DbVoyage):Voyage=>({id:v.id,name:v.name,origin:v.origin,destination:v.destination,originLat:v.origin_lat,originLng:v.origin_lng,destLat:v.dest_lat,destLng:v.dest_lng,departure:v.departure,speed:v.speed,status:v.status});
 
 const demo:Voyage[]=[{id:"VT-001",name:"MV Ocean Star",origin:"Vancouver, Canada",destination:"Karachi, Pakistan",originLat:49.2827,originLng:-123.1207,destLat:24.8607,destLng:67.0011,departure:new Date(Date.now()-72*3600000).toISOString(),speed:13,status:"active"}];
 
@@ -20,22 +24,27 @@ function distance(a:number,b:number,c:number,d:number){const R=3440.065;const p1
 function Fit({v}:{v:Voyage}){const map=useMap();useEffect(()=>{map.fitBounds([[v.originLat,v.originLng],[v.destLat,v.destLng]],{padding:[30,30]})},[map,v]);return null}
 
 export default function App(){
- const [voyages,setVoyages]=useState<Voyage[]>(()=>{try{return JSON.parse(localStorage.getItem("vt-voyages")||"null")||demo}catch{return demo}});
- const [selected,setSelected]=useState(voyages[0]);
+ const [voyages,setVoyages]=useState<Voyage[]>([]);
+ const [loading,setLoading]=useState(true);
+ const [message,setMessage]=useState("");
+ const [selected,setSelected]=useState<Voyage|undefined>(undefined);
+
  const [now,setNow]=useState(Date.now());
  const [admin,setAdmin]=useState(false);
  const [showNew,setShowNew]=useState(false);
  const [form,setForm]=useState({name:"",origin:"",destination:"",originLat:"",originLng:"",destLat:"",destLng:"",departure:"",speed:"13"});
  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t)},[]);
- useEffect(()=>localStorage.setItem("vt-voyages",JSON.stringify(voyages)),[voyages]);
+ useEffect(()=>{let alive=true;(async()=>{const {data,error}=await supabase.from("voyages").select("*").order("created_at",{ascending:false});if(!alive)return;if(error){setMessage("Supabase is not connected yet. Run supabase/schema.sql in the SQL Editor.");setVoyages(demo);setSelected(demo[0]);}else{const rows=(data as DbVoyage[]).map(fromDb);setVoyages(rows.length?rows:demo);setSelected(rows[0]||demo[0]);}setLoading(false)})();return()=>{alive=false}},[]);
  const pos=selected?interpolate(selected):null;
  const eta=pos&&selected?new Date(new Date(selected.departure).getTime()+pos.totalDist/selected.speed*3600000):null;
  const route=selected?[[selected.originLat,selected.originLng],[selected.destLat,selected.destLng]] as [number,number][]:[];
  const progress=pos?Math.round(pos.p*100):0;
- const create=()=>{const n:Voyage={id:"VT-"+String(Date.now()).slice(-6),name:form.name||"Unnamed Vessel",origin:form.origin,destination:form.destination,originLat:Number(form.originLat),originLng:Number(form.originLng),destLat:Number(form.destLat),destLng:Number(form.destLng),departure:new Date(form.departure).toISOString(),speed:Number(form.speed)||13,status:"active"};if(!n.origin||!n.destination||![n.originLat,n.originLng,n.destLat,n.destLng].every(Number.isFinite))return alert("Please enter valid voyage details and coordinates.");setVoyages(x=>[n,...x]);setSelected(n);setShowNew(false)};
+ const create=async()=>{const n:Voyage={id:"VT-"+String(Date.now()).slice(-6),name:form.name||"Unnamed Vessel",origin:form.origin,destination:form.destination,originLat:Number(form.originLat),originLng:Number(form.originLng),destLat:Number(form.destLat),destLng:Number(form.destLng),departure:new Date(form.departure).toISOString(),speed:Number(form.speed)||13,status:"active"};if(!n.origin||!n.destination||![n.originLat,n.originLng,n.destLat,n.destLng].every(Number.isFinite))return alert("Please enter valid voyage details and coordinates.");
+const {error}=await supabase.from("voyages").insert({id:n.id,name:n.name,origin:n.origin,destination:n.destination,origin_lat:n.originLat,origin_lng:n.originLng,dest_lat:n.destLat,dest_lng:n.destLng,departure:n.departure,speed:n.speed,status:n.status});
+if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(n);setShowNew(false);setMessage("Voyage saved to Supabase.");};
  return <div className="app">
   <header><div className="brand"><ShipWheel size={28}/><div><strong>VesselTrack</strong><span>Custom Voyage Monitoring</span></div></div><div className="header-actions"><button className="ghost" onClick={()=>setAdmin(!admin)}><Settings size={17}/>{admin?"Tracking View":"Admin"}</button></div></header>
-  <main>
+  <main>{message&&<div className="supabase-message">{message}</div>}{loading&&<div className="supabase-message">Loading voyages…</div>
    <section className="hero"><div><div className="eyebrow"><CircleDot size={12}/> SIMULATED LIVE TRACKING</div><h1>Monitor every voyage<br/><em>in real time.</em></h1><p>Admin-controlled vessel simulation with automatic position, distance and ETA calculations.</p></div><div className="status-card"><span>System status</span><b><i/>Simulation engine online</b><small>Updates every second in this preview</small></div></section>
    {admin&&<section className="admin-panel"><div className="panel-title"><div><span className="eyebrow">ADMIN CONTROL</span><h2>Voyage management</h2></div><button className="primary" onClick={()=>setShowNew(!showNew)}><Plus size={18}/> New voyage</button></div>{showNew&&<div className="form-grid">
     {(["name","origin","destination","originLat","originLng","destLat","destLng","departure","speed"] as const).map(k=><label key={k}>{({name:"Vessel name",origin:"Origin",destination:"Destination",originLat:"Origin latitude",originLng:"Origin longitude",destLat:"Destination latitude",destLng:"Destination longitude",departure:"Departure date/time",speed:"Speed (knots)"} as any)[k]}<input type={k==="departure"?"datetime-local":"text"} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/></label>)}<button className="primary create" onClick={create}><Play size={17}/> Start simulation</button>
