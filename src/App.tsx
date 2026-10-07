@@ -13,23 +13,54 @@ const fromDb=(v:DbVoyage):Voyage=>({id:v.id,name:v.name,origin:v.origin,destinat
 const shipIcon=(number:string,name:string)=>L.divIcon({className:"ship-marker",html:`<div class="ship-bubble"><span class="ship-side-icon" aria-hidden="true"><svg viewBox="0 0 72 38" xmlns="http://www.w3.org/2000/svg"><path d="M4 25h49l9-7 6 7-8 7H18c-6 0-11-2-14-7Z" fill="#e83b3b" stroke="#fff" stroke-width="1.8"/><path d="M8 25h45l-3 4H18c-5 0-8-1-10-4Z" fill="#ffb52e"/><path d="M16 23V12h34v11" fill="#ffc83d" stroke="#fff" stroke-width="1.5"/><path d="M20 21h8v-8h7v8h9v-8h6v8" fill="#ff6b35"/><path d="M23 12V7h8v5M34 12V5h8v7M45 12V8h5v4" fill="#22a6a6" stroke="#fff" stroke-width="1.4"/><path d="M25 13v7M34 13v7M43 13v7" stroke="#ffe16b" stroke-width="2"/><path d="M10 27h43" stroke="#fff" stroke-width="2"/><path d="M7 31c5 2 10 2 15 0" fill="none" stroke="#38d9a8" stroke-width="2"/></svg></span><div class="ship-label"><b>${number}</b><small>${name}</small></div></div>`,iconSize:[230,42],iconAnchor:[24,21]});
 const endpointIcon=(label:string,type:"departure"|"destination")=>L.divIcon({className:"endpoint-marker",html:`<div class="endpoint-label ${type}"><i></i><span>${label}</span></div>`,iconSize:[170,28],iconAnchor:type==="departure"?[0,14]:[170,14]});
 
+type Waypoint=[number,number];
+
+const oceanCorridor=(v:Voyage):Waypoint[]=>{
+  const key=(v.origin+" "+v.destination).toLowerCase();
+  if(key.includes("vancouver")&&key.includes("karachi")){
+    return [
+      [v.originLat,v.originLng],
+      [48.0,-128.0],[43.0,-132.0],[36.0,-136.0],[28.0,-132.0],
+      [20.0,-125.0],[12.0,-116.0],[5.0,-105.0],[-2.0,-92.0],
+      [0.0,-80.0],[5.0,-70.0],[10.0,-60.0],[12.0,-50.0],
+      [14.0,-40.0],[18.0,-30.0],[22.0,-20.0],[25.0,-10.0],
+      [28.0,0.0],[30.0,10.0],[30.0,20.0],[25.0,30.0],
+      [18.0,40.0],[12.0,50.0],[8.0,58.0],[10.0,62.0],
+      [13.0,65.0],[16.0,67.0],[19.0,66.0],[v.destLat,v.destLng]
+    ];
+  }
+  return [[v.originLat,v.originLng],[v.destLat,v.destLng]];
+};
+
+function corridorDistance(points:Waypoint[]){
+  let total=0;
+  for(let i=1;i<points.length;i++) total+=distance(points[i-1][0],points[i-1][1],points[i][0],points[i][1]);
+  return total;
+}
+
+function positionOnCorridor(points:Waypoint,traveled:number){
+  let remaining=traveled;
+  for(let i=1;i<points.length;i++){
+    const [lat1,lng1]=points[i-1], [lat2,lng2]=points[i];
+    const leg=distance(lat1,lng1,lat2,lng2);
+    if(remaining<=leg){
+      const p=leg?remaining/leg:0;
+      return {lat:lat1+(lat2-lat1)*p,lng:lng1+(lng2-lng1)*p};
+    }
+    remaining-=leg;
+  }
+  const last=points[points.length-1];
+  return {lat:last[0],lng:last[1]};
+}
+
 function interpolate(v:Voyage){
   const elapsed=Math.max(0,(Date.now()-new Date(v.departure).getTime())/3600000);
-  const totalDist=distance(v.originLat,v.originLng,v.destLat,v.destLng);
+  const points=oceanCorridor(v);
+  const totalDist=corridorDistance(points);
   const traveled=Math.min(totalDist,elapsed*v.speed);
   const p=totalDist?traveled/totalDist:0;
-  const lat1=v.originLat*Math.PI/180,lon1=v.originLng*Math.PI/180,lat2=v.destLat*Math.PI/180,lon2=v.destLng*Math.PI/180;
-  const a=Math.sin((lat2-lat1)/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin((lon2-lon1)/2)**2;
-  const central=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-  const sinCentral=Math.sin(central);
-  const A=sinCentral?Math.sin((1-p)*central)/sinCentral:1-p;
-  const B=sinCentral?Math.sin(p*central)/sinCentral:p;
-  const x=A*Math.cos(lat1)*Math.cos(lon1)+B*Math.cos(lat2)*Math.cos(lon2);
-  const y=A*Math.cos(lat1)*Math.sin(lon1)+B*Math.cos(lat2)*Math.sin(lon2);
-  const z=A*Math.sin(lat1)+B*Math.sin(lat2);
-  const lat=Math.atan2(z,Math.sqrt(x*x+y*y))*180/Math.PI;
-  const lng=Math.atan2(y,x)*180/Math.PI;
-  return {lat,lng,p,elapsed,totalDist,traveled,remaining:Math.max(0,totalDist-traveled)};
+  const point=positionOnCorridor(points,traveled);
+  return {lat:point.lat,lng:point.lng,p,elapsed,totalDist,traveled,remaining:Math.max(0,totalDist-traveled)};
 }
 function distance(a:number,b:number,c:number,d:number){const R=3440.065;const p1=a*Math.PI/180,p2=c*Math.PI/180,dp=(c-a)*Math.PI/180,dl=(d-b)*Math.PI/180;const x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
 function Fit({v}:{v:Voyage}){const map=useMap();useEffect(()=>{map.fitBounds([[v.originLat,v.originLng],[v.destLat,v.destLng]],{padding:[30,30]})},[map,v]);return null}
@@ -57,7 +88,7 @@ export default function App(){
  useEffect(()=>{if(!user){setVoyages([]);setSelected(undefined);setLoading(false);return;}let alive=true;(async()=>{setLoading(true);const {data,error}=await supabase.from("voyages").select("*").order("created_at",{ascending:false});if(!alive)return;if(error){setMessage("Unable to load voyage records.");setVoyages([]);}else{setVoyages((data as DbVoyage[]).map(fromDb));}setLoading(false)})();return()=>{alive=false}},[user]);
  const pos=selected?interpolate(selected):null;
  const eta=pos&&selected?new Date(new Date(selected.departure).getTime()+pos.totalDist/selected.speed*3600000):null;
- const route=selected?[[selected.originLat,selected.originLng],[selected.destLat,selected.destLng]] as [number,number][]:[];
+ const route=selected?oceanCorridor(selected):[];
  const progress=pos?Math.round(pos.p*100):0;
  const login=async()=>{setLoginBusy(true);setMessage("");
    const {data:admin,error:lookupError}=await supabase.from("admin_users").select("email").eq("username",username.trim()).maybeSingle();
