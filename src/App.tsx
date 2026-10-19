@@ -135,7 +135,20 @@ export default function App(){
    setSelected(updated);setEditing(false);setMessage("Voyage details updated.");
  };
  const geocode=async(place:string)=>{const url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(place);const res=await fetch(url,{headers:{Accept:"application/json"}});if(!res.ok)throw new Error("Location lookup failed.");const data=await res.json();if(!data[0])throw new Error("Location not found: "+place);return {lat:Number(data[0].lat),lng:Number(data[0].lon)};};
- const searchVessel=async()=>{const number=vesselNumber.trim().toUpperCase();if(!number){setMessage("Enter a vessel number to search.");return;}setSearching(true);setMessage("Searching vessel records…");const {data,error}=await supabase.from("voyages").select("*").eq("id",number).maybeSingle();setSearching(false);if(error){setMessage("Unable to search vessel records.");return;}if(!data){setSelected(undefined);setMessage("No vessel found with number "+number+".");return;}const v=fromDb(data as DbVoyage);setSelected(v);setMessage("Vessel "+v.id+" found.");};
+ const searchVessel=async()=>{
+   const number=vesselNumber.trim().toUpperCase();
+   if(!number){setMessage("Enter a vessel number to search.");return;}
+   setSearching(true);setMessage("Searching for vessel "+number+"…");
+   try{
+     const {data,error}=await supabase.from("voyages").select("*").ilike("id",number).maybeSingle();
+     if(error){console.error("Vessel search failed:",error);setMessage("Search failed: "+error.message);setSelected(undefined);return;}
+     if(!data){setSelected(undefined);setMessage("No vessel found with number "+number+". Check the number and try again.");return;}
+     const v=fromDb(data as DbVoyage);setSelected(v);setMessage("Vessel "+v.id+" found."); 
+   }catch(error){
+     console.error("Vessel search error:",error);
+     setSelected(undefined);setMessage("Could not complete the search. Please check your connection and try again.");
+   }finally{setSearching(false);}
+ };
  const deleteVoyage=async(v:Voyage)=>{if(!user)return;if(!window.confirm("Delete vessel "+v.id+" ("+v.name+")? This cannot be undone."))return;setDeleting(v.id);setMessage("");const {error}=await supabase.from("voyages").delete().eq("id",v.id);setDeleting(null);if(error){setMessage("Unable to delete vessel: "+error.message);return;}setVoyages(x=>x.filter(item=>item.id!==v.id));if(selected?.id===v.id)setSelected(undefined);setMessage("Vessel "+v.id+" deleted.");};
  const create=async()=>{if(!user){setLoginOpen(true);return;}const number=form.number.trim().toUpperCase(),name=form.name.trim(),origin=form.origin.trim(),destination=form.destination.trim(),departure=form.departure.trim();const missing=[!number?"vessel number":"",!name?"vessel name":"",!origin?"origin":"",!destination?"destination":"",!departure?"departure time":""].filter(Boolean);if(missing.length){setMessage("Please enter: "+missing.join(", ")+".");return;}setMessage("Finding origin and destination…");const nOrigin=await geocode(origin).catch((e)=>{setMessage(e.message);return null});if(!nOrigin)return;const nDest=await geocode(form.destination).catch((e)=>{setMessage(e.message);return null});if(!nDest)return;const n:Voyage={id:number,name,origin,destination,originLat:nOrigin.lat,originLng:nOrigin.lng,destLat:nDest.lat,destLng:nDest.lng,departure:new Date(departure).toISOString(),speed:Number(form.speed)||13,status:"active"};
 const {error}=await supabase.from("voyages").insert({id:n.id,name:n.name,origin:n.origin,destination:n.destination,origin_lat:n.originLat,origin_lng:n.originLng,dest_lat:n.destLat,dest_lng:n.destLng,departure:n.departure,speed:n.speed,status:n.status});
@@ -152,7 +165,7 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
       <p>Search a vessel to view its voyage route and track progress from departure to destination.</p>
     </div>
    </section>
-\n   {!user&&<section className="search-panel"><div className="search-copy"><span className="eyebrow"><Navigation size={12}/> PUBLIC VESSEL SEARCH</span><h2>Track a vessel by vessel number</h2><p>Enter the vessel number provided by the administrator to view its current simulated position, route and voyage details.</p></div><div className="search-box"><input value={vesselNumber} onChange={e=>setVesselNumber(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==="Enter")searchVessel()}} placeholder="Enter vessel number, e.g. VT-1001"/><button className="primary" onClick={searchVessel} disabled={searching}>{searching?"Searching…":"Find vessel"}</button></div></section>}
+   {!user&&<section className="search-panel"><div className="search-copy"><span className="eyebrow"><Navigation size={12}/> PUBLIC VESSEL SEARCH</span><h2>Track a vessel by vessel number</h2><p>Enter the vessel number provided by the administrator to view its current simulated position, route and voyage details.</p></div><div className="search-box"><input value={vesselNumber} onChange={e=>setVesselNumber(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==="Enter")searchVessel()}} placeholder="Enter vessel number, e.g. VT-1001"/><button className="primary" onClick={searchVessel} disabled={searching}>{searching?"Searching…":"Find vessel"}</button></div></section>}
    {user&&<section className="admin-panel"><div className="panel-title"><div><span className="eyebrow">ADMIN CONTROL</span><h2>Voyage management</h2></div><button className="primary" onClick={()=>setShowNew(!showNew)}><Plus size={18}/> New voyage</button></div>{showNew&&<div className="form-grid">
     <label>Vessel number<input type="text" placeholder="e.g. VT-1001" value={form.number} onChange={e=>setForm({...form,number:e.target.value.toUpperCase()})}/></label>
     <label>Vessel name<input type="text" placeholder="e.g. MV Ocean Star" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>
