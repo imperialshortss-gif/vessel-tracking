@@ -140,7 +140,12 @@ export default function App(){
    if(!number){setMessage("Enter a vessel number to search.");return;}
    setSearching(true);setMessage("Searching for vessel "+number+"…");
    try{
-     const {data,error}=await supabase.from("voyages").select("*").ilike("id",number).maybeSingle();
+     const query = supabase.from("voyages").select("*").ilike("id",number).maybeSingle();
+     const result = await Promise.race([
+       query,
+       new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("The database did not respond within 12 seconds. Check the public read permissions for the voyages table in Supabase.")),12000))
+     ]);
+     const {data,error}=result;
      if(error){console.error("Vessel search failed:",error);setMessage("Search failed: "+error.message);setSelected(undefined);return;}
      if(!data){setSelected(undefined);setMessage("No vessel found with number "+number+". Check the number and try again.");return;}
      const v=fromDb(data as DbVoyage);setSelected(v);setMessage("Vessel "+v.id+" found."); 
