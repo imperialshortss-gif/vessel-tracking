@@ -139,22 +139,33 @@ export default function App(){
    const number=vesselNumber.trim().toUpperCase();
    if(!number){setMessage("Enter a vessel number to search.");return;}
    setSearching(true);setMessage("Searching for vessel "+number+"…");
+   const controller=new AbortController();
+   const timeout=window.setTimeout(()=>controller.abort(),12000);
    try{
-     const query = supabase.from("voyages").select("*").ilike("id",number).maybeSingle();
-     const result = await Promise.race([
-       query,
-       new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("The database did not respond within 12 seconds. Check the public read permissions for the voyages table in Supabase.")),12000))
-     ]);
-     const {data,error}=result;
-     if(error){console.error("Vessel search failed:",error);setMessage("Search failed: "+error.message);setSelected(undefined);return;}
-     if(!data){setSelected(undefined);setMessage("No vessel found with number "+number+". Check the number and try again.");return;}
-     const v=fromDb(data as DbVoyage);setSelected(v);setMessage("Vessel "+v.id+" found."); 
+     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&id=eq."+encodeURIComponent(number),{
+       method:"GET",
+       headers:{
+         apikey:"sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO",
+         Authorization:"Bearer sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO",
+         Accept:"application/json"
+       },
+       signal:controller.signal
+     });
+     const body=await response.text();
+     if(!response.ok){
+       console.error("Vessel search failed:",response.status,body);
+       setSelected(undefined);
+       setMessage("Search failed ("+response.status+"): "+body.slice(0,220));
+       return;
+     }
+     const rows=JSON.parse(body) as DbVoyage[];
+     if(!rows.length){setSelected(undefined);setMessage("No vessel found with number "+number+". Check the number and try again.");return;}
+     const v=fromDb(rows[0]);setSelected(v);setMessage("Vessel "+v.id+" found.");
    }catch(error){
      console.error("Vessel search error:",error);
      setSelected(undefined);
-     const reason=error instanceof Error?error.message:String(error);
-     setMessage(reason.includes("did not respond within 12 seconds")?reason:"Search request failed: "+reason);
-   }finally{setSearching(false);}
+     setMessage(error instanceof Error&&error.name==="AbortError"?"The database request timed out after 12 seconds.":"Search request failed: "+(error instanceof Error?error.message:String(error)));
+   }finally{window.clearTimeout(timeout);setSearching(false);}
  };
  const deleteVoyage=async(v:Voyage)=>{if(!user)return;if(!window.confirm("Delete vessel "+v.id+" ("+v.name+")? This cannot be undone."))return;setDeleting(v.id);setMessage("");const {error}=await supabase.from("voyages").delete().eq("id",v.id);setDeleting(null);if(error){setMessage("Unable to delete vessel: "+error.message);return;}setVoyages(x=>x.filter(item=>item.id!==v.id));if(selected?.id===v.id)setSelected(undefined);setMessage("Vessel "+v.id+" deleted.");};
  const create=async()=>{if(!user){setLoginOpen(true);return;}const number=form.number.trim().toUpperCase(),name=form.name.trim(),origin=form.origin.trim(),destination=form.destination.trim(),departure=form.departure.trim();const missing=[!number?"vessel number":"",!name?"vessel name":"",!origin?"origin":"",!destination?"destination":"",!departure?"departure time":""].filter(Boolean);if(missing.length){setMessage("Please enter: "+missing.join(", ")+".");return;}setMessage("Finding origin and destination…");const nOrigin=await geocode(origin).catch((e)=>{setMessage(e.message);return null});if(!nOrigin)return;const nDest=await geocode(form.destination).catch((e)=>{setMessage(e.message);return null});if(!nDest)return;const n:Voyage={id:number,name,origin,destination,originLat:nOrigin.lat,originLng:nOrigin.lng,destLat:nDest.lat,destLng:nDest.lng,departure:new Date(departure).toISOString(),speed:Number(form.speed)||13,status:"active"};
