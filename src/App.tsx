@@ -142,14 +142,11 @@ export default function App(){
    const controller=new AbortController();
    const timeout=window.setTimeout(()=>controller.abort(),12000);
    try{
-     // Fetch the publicly readable voyage rows, then match the vessel number against
-     // the common identifier columns. This avoids silently missing a record if the
-     // stored identifier is not in the id column.
-     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&limit=1000",{
+     // Request only the exact vessel ID instead of downloading the whole table.
+     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&id=eq."+encodeURIComponent(number)+"&limit=1",{
        method:"GET",
        headers:{
          apikey:"sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO",
-         Authorization:"Bearer sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO",
          Accept:"application/json"
        },
        signal:controller.signal
@@ -158,23 +155,22 @@ export default function App(){
      if(!response.ok){
        console.error("Vessel search failed:",response.status,body);
        setSelected(undefined);
-       setMessage("Search failed ("+response.status+"): "+body.slice(0,220));
+       setMessage("Supabase error ("+response.status+"): "+body.slice(0,220));
        return;
      }
-     const rows=JSON.parse(body) as Array<DbVoyage & Record<string,unknown>>;
-     const matches=rows.filter(row=>Object.values(row).some(value=>typeof value==="string"&&value.trim().toUpperCase()===number));
-     if(!matches.length){
+     const rows=JSON.parse(body) as DbVoyage[];
+     if(!rows.length){
        setSelected(undefined);
-       setMessage(rows.length===0
-         ?"Supabase returned 0 publicly readable voyage records. Check the public SELECT grant/policy for the voyages table."
-         :"No matching vessel number was found in "+rows.length+" publicly readable voyage record(s).");
+       setMessage("Supabase responded, but no public voyage record has ID "+number+". The record may be missing or saved under a different ID.");
        return;
      }
-     const v=fromDb(matches[0] as DbVoyage);setSelected(v);setMessage("Vessel "+v.id+" found.");
+     const v=fromDb(rows[0]);setSelected(v);setMessage("Vessel "+v.id+" found.");
    }catch(error){
      console.error("Vessel search error:",error);
      setSelected(undefined);
-     setMessage(error instanceof Error&&error.name==="AbortError"?"The database request timed out after 12 seconds.":"Search request failed: "+(error instanceof Error?error.message:String(error)));
+     setMessage(error instanceof Error&&error.name==="AbortError"
+       ?"Supabase did not respond within 12 seconds. The issue is the project/API connection, not the vessel number."
+       :"Search request failed: "+(error instanceof Error?error.message:String(error)));
    }finally{window.clearTimeout(timeout);setSearching(false);}
  };
  const deleteVoyage=async(v:Voyage)=>{if(!user)return;if(!window.confirm("Delete vessel "+v.id+" ("+v.name+")? This cannot be undone."))return;setDeleting(v.id);setMessage("");const {error}=await supabase.from("voyages").delete().eq("id",v.id);setDeleting(null);if(error){setMessage("Unable to delete vessel: "+error.message);return;}setVoyages(x=>x.filter(item=>item.id!==v.id));if(selected?.id===v.id)setSelected(undefined);setMessage("Vessel "+v.id+" deleted.");};
