@@ -142,7 +142,10 @@ export default function App(){
    const controller=new AbortController();
    const timeout=window.setTimeout(()=>controller.abort(),12000);
    try{
-     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&id=eq."+encodeURIComponent(number),{
+     // Fetch the publicly readable voyage rows, then match the vessel number against
+     // the common identifier columns. This avoids silently missing a record if the
+     // stored identifier is not in the id column.
+     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&limit=200",{
        method:"GET",
        headers:{
          apikey:"sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO",
@@ -158,9 +161,17 @@ export default function App(){
        setMessage("Search failed ("+response.status+"): "+body.slice(0,220));
        return;
      }
-     const rows=JSON.parse(body) as DbVoyage[];
-     if(!rows.length){setSelected(undefined);setMessage("No vessel found with number "+number+". Check the number and try again.");return;}
-     const v=fromDb(rows[0]);setSelected(v);setMessage("Vessel "+v.id+" found.");
+     const rows=JSON.parse(body) as Array<DbVoyage & Record<string,unknown>>;
+     const matches=rows.filter(row=>[row.id,row.name,row["vessel_number"],row["vessel_no"],row["number"],row["vessel_code"],row["imo"]]
+       .some(value=>typeof value==="string"&&value.trim().toUpperCase()===number));
+     if(!matches.length){
+       setSelected(undefined);
+       setMessage(rows.length===0
+         ?"Supabase returned 0 publicly readable voyage records. Check the public SELECT grant/policy for the voyages table."
+         :"No matching vessel number was found in "+rows.length+" publicly readable voyage record(s).");
+       return;
+     }
+     const v=fromDb(matches[0] as DbVoyage);setSelected(v);setMessage("Vessel "+v.id+" found.");
    }catch(error){
      console.error("Vessel search error:",error);
      setSelected(undefined);
