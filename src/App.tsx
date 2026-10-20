@@ -145,7 +145,7 @@ export default function App(){
      // Fetch the publicly readable voyage rows, then match the vessel number against
      // the common identifier columns. This avoids silently missing a record if the
      // stored identifier is not in the id column.
-     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&limit=200",{
+     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&limit=1000",{
        method:"GET",
        headers:{
          apikey:"sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO",
@@ -162,8 +162,7 @@ export default function App(){
        return;
      }
      const rows=JSON.parse(body) as Array<DbVoyage & Record<string,unknown>>;
-     const matches=rows.filter(row=>[row.id,row.name,row["vessel_number"],row["vessel_no"],row["number"],row["vessel_code"],row["imo"]]
-       .some(value=>typeof value==="string"&&value.trim().toUpperCase()===number));
+     const matches=rows.filter(row=>Object.values(row).some(value=>typeof value==="string"&&value.trim().toUpperCase()===number));
      if(!matches.length){
        setSelected(undefined);
        setMessage(rows.length===0
@@ -194,7 +193,7 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
       <p>Search a vessel to view its voyage route and track progress from departure to destination.</p>
     </div>
    </section>
-   {!user&&<section className="search-panel"><div className="search-copy"><span className="eyebrow"><Navigation size={12}/> PUBLIC VESSEL SEARCH</span><h2>Track a vessel by vessel number</h2><p>Enter the vessel number provided by the administrator to view its current simulated position, route and voyage details.</p></div><div className="search-box"><input value={vesselNumber} onChange={e=>setVesselNumber(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==="Enter")searchVessel()}} placeholder="Enter vessel number, e.g. VT-1001"/><button className="primary" onClick={searchVessel} disabled={searching}>{searching?"Searching…":"Find vessel"}</button></div></section>}
+   {!user&&<section className="search-panel"><div className="search-copy"><span className="eyebrow"><Navigation size={12}/> PUBLIC VESSEL SEARCH</span><h2>Track a vessel by vessel number</h2><p>Enter the vessel number provided by the administrator to view its current simulated position, route and voyage details.</p></div><div className="search-box"><input value={vesselNumber} onChange={e=>setVesselNumber(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==="Enter")searchVessel()}} placeholder="Enter vessel number, e.g. VT-1001"/><button className="primary" onClick={searchVessel} disabled={searching}>{searching?"Searching…":"Find vessel"}</button></div>{message&&<div role="status" aria-live="polite" style={{gridColumn:"1 / -1",marginTop:8,padding:"12px 14px",border:"1px solid #31516b",borderRadius:8,background:"#061725",color:"#eaf4ff",fontSize:13,overflowWrap:"anywhere"}}>{message}</div>}</section>}
    {user&&<section className="admin-panel"><div className="panel-title"><div><span className="eyebrow">ADMIN CONTROL</span><h2>Voyage management</h2></div><button className="primary" onClick={()=>setShowNew(!showNew)}><Plus size={18}/> New voyage</button></div>{showNew&&<div className="form-grid">
     <label>Vessel number<input type="text" placeholder="e.g. VT-1001" value={form.number} onChange={e=>setForm({...form,number:e.target.value.toUpperCase()})}/></label>
     <label>Vessel name<input type="text" placeholder="e.g. MV Ocean Star" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>
