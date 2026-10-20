@@ -143,12 +143,9 @@ export default function App(){
    const timeout=window.setTimeout(()=>controller.abort(),12000);
    try{
      // Request only the exact vessel ID instead of downloading the whole table.
-     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&id=eq."+encodeURIComponent(number)+"&limit=1",{
+     const response=await fetch("https://lolbrqyvwedtaksytalu.supabase.co/rest/v1/voyages?select=*&id=eq."+encodeURIComponent(number)+"&limit=1&apikey="+encodeURIComponent("sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO"),{
        method:"GET",
-       headers:{
-         apikey:"sb_publishable_9ZetRCffg-zcklv5rifkFA_AwDDGAtO",
-         Accept:"application/json"
-       },
+       headers:{Accept:"application/json"},
        signal:controller.signal
      });
      const body=await response.text();
