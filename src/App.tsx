@@ -151,7 +151,9 @@ export default function App(){
      const v=fromDb(data as DbVoyage);setSelected(v);setMessage("Vessel "+v.id+" found."); 
    }catch(error){
      console.error("Vessel search error:",error);
-     setSelected(undefined);setMessage("Could not complete the search. Please check your connection and try again.");
+     setSelected(undefined);
+     const reason=error instanceof Error?error.message:String(error);
+     setMessage(reason.includes("did not respond within 12 seconds")?reason:"Search request failed: "+reason);
    }finally{setSearching(false);}
  };
  const deleteVoyage=async(v:Voyage)=>{if(!user)return;if(!window.confirm("Delete vessel "+v.id+" ("+v.name+")? This cannot be undone."))return;setDeleting(v.id);setMessage("");const {error}=await supabase.from("voyages").delete().eq("id",v.id);setDeleting(null);if(error){setMessage("Unable to delete vessel: "+error.message);return;}setVoyages(x=>x.filter(item=>item.id!==v.id));if(selected?.id===v.id)setSelected(undefined);setMessage("Vessel "+v.id+" deleted.");};
