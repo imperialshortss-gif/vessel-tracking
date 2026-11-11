@@ -67,7 +67,8 @@ function interpolate(v:Voyage){
   const elapsed=Math.max(0,(Date.now()-new Date(v.departure).getTime())/3600000);
   const points=oceanCorridor(v);
   const totalDist=corridorDistance(points);
-  if(v.status==="paused"&&v.pausedLat!=null&&v.pausedLng!=null){const p=v.pausedProgress??0;return {lat:v.pausedLat,lng:v.pausedLng,p,elapsed,totalDist,traveled:p*totalDist,remaining:v.pausedRemaining??Math.max(0,totalDist-p*totalDist)};}\n  const traveled=Math.min(totalDist,elapsed*v.speed);
+  if(v.status==="paused"&&v.pausedLat!=null&&v.pausedLng!=null){const p=v.pausedProgress??0;return {lat:v.pausedLat,lng:v.pausedLng,p,elapsed,totalDist,traveled:p*totalDist,remaining:v.pausedRemaining??Math.max(0,totalDist-p*totalDist)}}
+  const traveled=Math.min(totalDist,elapsed*v.speed);
   const p=totalDist?traveled/totalDist:0;
   const point=positionOnCorridor(points,traveled);
   return {lat:point.lat,lng:point.lng,p,elapsed,totalDist,traveled,remaining:Math.max(0,totalDist-traveled)};
