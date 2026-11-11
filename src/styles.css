@@ -106,3 +106,6 @@ footer{align-items:center}
 /* Keep the stop-vessel action visible in the admin voyage row */
 .stop-voyage{flex:0 0 auto!important;white-space:nowrap!important;display:inline-flex!important;align-items:center;justify-content:center;border:1px solid #3b78df!important;background:#173f73!important;color:#fff!important;border-radius:7px!important;padding:8px 11px!important;font-size:11px!important;font-weight:800!important;cursor:pointer!important}.stop-voyage:disabled{opacity:.45!important;cursor:not-allowed!important}
 @media(max-width:700px){.voyage-row{flex-wrap:wrap!important}.voyage-select{flex:1 1 100%!important}.stop-voyage{margin-left:20px}}
+
+/* Highlight the existing stopped-voyage message without moving it */
+.stopped-note{background:#392b12!important;border:1px solid #d99a32!important;color:#ffe0a0!important;font-size:13px!important;font-weight:600!important;line-height:1.55!important;padding:13px 14px!important;align-items:flex-start}.stopped-note svg{color:#ffc45c!important;flex:none;margin-top:1px}
