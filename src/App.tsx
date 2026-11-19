@@ -209,7 +209,7 @@ export default function App(){
    const updated=fromDb(data as DbVoyage);
    setVoyages(x=>x.map(v=>v.id===updated.id?updated:v));
    setSelected(updated);
-   setMessage("Speed adjusted to "+speed.toFixed(2)+" knots. Estimated arrival is 29 November 2026.");
+   setMessage("Speed adjusted to "+speed.toFixed(2)+" knots. Estimated arrival is "+target.toLocaleDateString(undefined,{day:"numeric",month:"long",year:"numeric"})+".");
  };
  const stopVoyage=async()=>{if(!user||!selected||!pos||selected.status==="paused")return;setMessage("Saving vessel stop position…");const patch={status:"paused",paused_lat:pos.lat,paused_lng:pos.lng,paused_progress:pos.p,paused_remaining:pos.remaining,stop_message:"Stopped outside Strait of Hormuz waiting the route to be clear"};const {data,error}=await supabase.from("voyages").update(patch).eq("id",selected.id).select("*").single();if(error||!data){setMessage("Unable to stop vessel: "+(error?.message||"No record returned."));return;}const stopped=fromDb(data as DbVoyage);setVoyages(x=>x.map(v=>v.id===stopped.id?stopped:v));setSelected(stopped);setMessage("Vessel "+stopped.id+" stopped and position saved.");};
  const deleteVoyage=async(v:Voyage)=>{if(!user)return;if(!window.confirm("Delete vessel "+v.id+" ("+v.name+")? This cannot be undone."))return;setDeleting(v.id);setMessage("");const {error}=await supabase.from("voyages").delete().eq("id",v.id);setDeleting(null);if(error){setMessage("Unable to delete vessel: "+error.message);return;}setVoyages(x=>x.filter(item=>item.id!==v.id));if(selected?.id===v.id)setSelected(undefined);setMessage("Vessel "+v.id+" deleted.");};
