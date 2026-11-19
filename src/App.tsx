@@ -92,6 +92,8 @@ export default function App(){
  const [editing,setEditing]=useState(false);
  const [editForm,setEditForm]=useState({name:"",origin:"",destination:"",departure:"",speed:""});
  const [savingEdit,setSavingEdit]=useState(false);
+ const [etaTargetDate,setEtaTargetDate]=useState("2026-11-29");
+ const [settingEta,setSettingEta]=useState(false);
  const [vesselNumber,setVesselNumber]=useState("");
  const [searching,setSearching]=useState(false);
  const [deleting,setDeleting]=useState<string|null>(null);
@@ -187,6 +189,28 @@ export default function App(){
    setSelected(resumed);
    setMessage("Vessel "+resumed.id+" resumed from its saved position.");
  };
+ const setVoyageEta=async()=>{
+   if(!user||!selected||!pos||selected.status!=="active")return;
+   if(!etaTargetDate){setMessage("Select an arrival date.");return;}
+   const [year,month,day]=etaTargetDate.split("-").map(Number);
+   const target=new Date(year,month-1,day,23,59,0,0);
+   const hours=(target.getTime()-Date.now())/3600000;
+   if(!(hours>0)){setMessage("The selected ETA date must be in the future.");return;}
+   const remaining=Math.max(0,pos.remaining);
+   if(remaining<=0){setMessage("The vessel has already reached its destination.");return;}
+   const speed=remaining/hours;
+   if(!Number.isFinite(speed)||speed<=0){setMessage("Unable to calculate a valid speed for that ETA.");return;}
+   const traveled=Math.max(0,pos.totalDist-remaining);
+   const departure=new Date(Date.now()-(traveled/speed)*3600000).toISOString();
+   setSettingEta(true);setMessage("Calculating speed from remaining distance and saving the new ETA…");
+   const {data,error}=await supabase.from("voyages").update({speed,departure}).eq("id",selected.id).select("*").single();
+   setSettingEta(false);
+   if(error||!data){setMessage("Unable to update vessel speed and ETA: "+(error?.message||"No record returned."));return;}
+   const updated=fromDb(data as DbVoyage);
+   setVoyages(x=>x.map(v=>v.id===updated.id?updated:v));
+   setSelected(updated);
+   setMessage("Speed adjusted to "+speed.toFixed(2)+" knots. Estimated arrival is 29 November 2026.");
+ };
  const stopVoyage=async()=>{if(!user||!selected||!pos||selected.status==="paused")return;setMessage("Saving vessel stop position…");const patch={status:"paused",paused_lat:pos.lat,paused_lng:pos.lng,paused_progress:pos.p,paused_remaining:pos.remaining,stop_message:"Stopped outside Strait of Hormuz waiting the route to be clear"};const {data,error}=await supabase.from("voyages").update(patch).eq("id",selected.id).select("*").single();if(error||!data){setMessage("Unable to stop vessel: "+(error?.message||"No record returned."));return;}const stopped=fromDb(data as DbVoyage);setVoyages(x=>x.map(v=>v.id===stopped.id?stopped:v));setSelected(stopped);setMessage("Vessel "+stopped.id+" stopped and position saved.");};
  const deleteVoyage=async(v:Voyage)=>{if(!user)return;if(!window.confirm("Delete vessel "+v.id+" ("+v.name+")? This cannot be undone."))return;setDeleting(v.id);setMessage("");const {error}=await supabase.from("voyages").delete().eq("id",v.id);setDeleting(null);if(error){setMessage("Unable to delete vessel: "+error.message);return;}setVoyages(x=>x.filter(item=>item.id!==v.id));if(selected?.id===v.id)setSelected(undefined);setMessage("Vessel "+v.id+" deleted.");};
  const create=async()=>{if(!user){setLoginOpen(true);return;}const number=form.number.trim().toUpperCase(),name=form.name.trim(),origin=form.origin.trim(),destination=form.destination.trim(),departure=form.departure.trim();const missing=[!number?"vessel number":"",!name?"vessel name":"",!origin?"origin":"",!destination?"destination":"",!departure?"departure time":""].filter(Boolean);if(missing.length){setMessage("Please enter: "+missing.join(", ")+".");return;}setMessage("Finding origin and destination…");const nOrigin=await geocode(origin).catch((e)=>{setMessage(e.message);return null});if(!nOrigin)return;const nDest=await geocode(form.destination).catch((e)=>{setMessage(e.message);return null});if(!nDest)return;const n:Voyage={id:number,name,origin,destination,originLat:nOrigin.lat,originLng:nOrigin.lng,destLat:nDest.lat,destLng:nDest.lng,departure:new Date(departure).toISOString(),speed:Number(form.speed)||13,status:"active"};
@@ -230,7 +254,7 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
       <div className="progress"><div><span>Voyage progress</span><b>{progress}%</b></div><div className="bar"><i style={{width:progress+"%"}}/></div></div>
       <div className="metrics"><Metric icon={<Gauge/>} label="Speed" value={selected.status==="paused"?"0.0 kn":selected.speed.toFixed(1)+" kn"}/><Metric icon={<Navigation/>} label="Position" value={pos.lat.toFixed(4)+"°, "+pos.lng.toFixed(4)+"°"}/><Metric icon={<Route/>} label="Distance remaining" value={Math.round(pos.remaining).toLocaleString()+" NM"}/><Metric icon={<Clock3/>} label="Estimated arrival" value={selected.status==="paused"?"Awaiting route clearance":eta?.toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})||"—"}/></div>
       <div className="route-box"><div><span>DEPARTURE</span><strong>{selected.origin}</strong></div><div className="line"><i/><i/><i/></div><div className="align-right"><span>DESTINATION</span><strong>{selected.destination}</strong></div></div>
-      <div className={selected.status==="paused"?"note stopped-note":"note"}><Anchor size={17}/><span>{selected.status==="paused"?(selected.stopMessage||"Stopped outside Strait of Hormuz waiting the route to be clear"):"Voyage is underway."}</span></div>{user&&selected.status==="paused"&&<button type="button" className="primary create" onClick={resumeVoyage}>Resume vessel</button>}{user&&selected.status!=="paused"&&<button type="button" className="secondary" onClick={stopVoyage}>Stop vessel at current position</button>}
+      <div className={selected.status==="paused"?"note stopped-note":"note"}><Anchor size={17}/><span>{selected.status==="paused"?(selected.stopMessage||"Stopped outside Strait of Hormuz waiting the route to be clear"):"Voyage is underway."}</span></div>{user&&selected.status==="active"&&<div className="eta-control"><label>Set target arrival date<input type="date" value={etaTargetDate} min={new Date().toISOString().slice(0,10)} onChange={e=>setEtaTargetDate(e.target.value)}/></label><button type="button" className="primary create" onClick={setVoyageEta} disabled={settingEta}>{settingEta?"Calculating…":"Calculate speed & set ETA"}</button><small>Speed is calculated using the vessel’s current remaining distance. Target date uses 11:59 PM local time.</small></div>}{user&&selected.status==="paused"&&<button type="button" className="primary create" onClick={resumeVoyage}>Resume vessel</button>}{user&&selected.status!=="paused"&&<button type="button" className="secondary" onClick={stopVoyage}>Stop vessel at current position</button>}
     </aside>}
    </section>
   </main>
