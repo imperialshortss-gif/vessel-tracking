@@ -171,6 +171,22 @@ export default function App(){
        :"Search request failed: "+(error instanceof Error?error.message:String(error)));
    }finally{window.clearTimeout(timeout);setSearching(false);}
  };
+ const resumeVoyage=async()=>{
+   if(!user||!selected||selected.status!=="paused")return;
+   const points=oceanCorridor(selected);
+   const totalDist=corridorDistance(points);
+   const progress=Math.max(0,Math.min(1,selected.pausedProgress??0));
+   const traveled=progress*totalDist;
+   const departure=new Date(Date.now()-(traveled/selected.speed)*3600000).toISOString();
+   setMessage("Resuming vessel from its saved position…");
+   const patch={status:"active",departure,paused_lat:null,paused_lng:null,paused_progress:null,paused_remaining:null,stop_message:null};
+   const {data,error}=await supabase.from("voyages").update(patch).eq("id",selected.id).select("*").single();
+   if(error||!data){setMessage("Unable to resume vessel: "+(error?.message||"No record returned."));return;}
+   const resumed=fromDb(data as DbVoyage);
+   setVoyages(x=>x.map(v=>v.id===resumed.id?resumed:v));
+   setSelected(resumed);
+   setMessage("Vessel "+resumed.id+" resumed from its saved position.");
+ };
  const stopVoyage=async()=>{if(!user||!selected||!pos||selected.status==="paused")return;setMessage("Saving vessel stop position…");const patch={status:"paused",paused_lat:pos.lat,paused_lng:pos.lng,paused_progress:pos.p,paused_remaining:pos.remaining,stop_message:"Stopped outside Strait of Hormuz waiting the route to be clear"};const {data,error}=await supabase.from("voyages").update(patch).eq("id",selected.id).select("*").single();if(error||!data){setMessage("Unable to stop vessel: "+(error?.message||"No record returned."));return;}const stopped=fromDb(data as DbVoyage);setVoyages(x=>x.map(v=>v.id===stopped.id?stopped:v));setSelected(stopped);setMessage("Vessel "+stopped.id+" stopped and position saved.");};
  const deleteVoyage=async(v:Voyage)=>{if(!user)return;if(!window.confirm("Delete vessel "+v.id+" ("+v.name+")? This cannot be undone."))return;setDeleting(v.id);setMessage("");const {error}=await supabase.from("voyages").delete().eq("id",v.id);setDeleting(null);if(error){setMessage("Unable to delete vessel: "+error.message);return;}setVoyages(x=>x.filter(item=>item.id!==v.id));if(selected?.id===v.id)setSelected(undefined);setMessage("Vessel "+v.id+" deleted.");};
  const create=async()=>{if(!user){setLoginOpen(true);return;}const number=form.number.trim().toUpperCase(),name=form.name.trim(),origin=form.origin.trim(),destination=form.destination.trim(),departure=form.departure.trim();const missing=[!number?"vessel number":"",!name?"vessel name":"",!origin?"origin":"",!destination?"destination":"",!departure?"departure time":""].filter(Boolean);if(missing.length){setMessage("Please enter: "+missing.join(", ")+".");return;}setMessage("Finding origin and destination…");const nOrigin=await geocode(origin).catch((e)=>{setMessage(e.message);return null});if(!nOrigin)return;const nDest=await geocode(form.destination).catch((e)=>{setMessage(e.message);return null});if(!nDest)return;const n:Voyage={id:number,name,origin,destination,originLat:nOrigin.lat,originLng:nOrigin.lng,destLat:nDest.lat,destLng:nDest.lng,departure:new Date(departure).toISOString(),speed:Number(form.speed)||13,status:"active"};
@@ -214,7 +230,7 @@ if(error){setMessage(error.message);return;}setVoyages(x=>[n,...x]);setSelected(
       <div className="progress"><div><span>Voyage progress</span><b>{progress}%</b></div><div className="bar"><i style={{width:progress+"%"}}/></div></div>
       <div className="metrics"><Metric icon={<Gauge/>} label="Speed" value={selected.status==="paused"?"0.0 kn":selected.speed.toFixed(1)+" kn"}/><Metric icon={<Navigation/>} label="Position" value={pos.lat.toFixed(4)+"°, "+pos.lng.toFixed(4)+"°"}/><Metric icon={<Route/>} label="Distance remaining" value={Math.round(pos.remaining).toLocaleString()+" NM"}/><Metric icon={<Clock3/>} label="Estimated arrival" value={selected.status==="paused"?"Awaiting route clearance":eta?.toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})||"—"}/></div>
       <div className="route-box"><div><span>DEPARTURE</span><strong>{selected.origin}</strong></div><div className="line"><i/><i/><i/></div><div className="align-right"><span>DESTINATION</span><strong>{selected.destination}</strong></div></div>
-      <div className={selected.status==="paused"?"note stopped-note":"note"}><Anchor size={17}/><span>{selected.status==="paused"?(selected.stopMessage||"Stopped outside Strait of Hormuz waiting the route to be clear"):"Voyage is underway."}</span></div>{user&&selected.status!=="paused"&&<button type="button" className="secondary" onClick={stopVoyage}>Stop vessel at current position</button>}
+      <div className={selected.status==="paused"?"note stopped-note":"note"}><Anchor size={17}/><span>{selected.status==="paused"?(selected.stopMessage||"Stopped outside Strait of Hormuz waiting the route to be clear"):"Voyage is underway."}</span></div>{user&&selected.status==="paused"&&<button type="button" className="primary create" onClick={resumeVoyage}>Resume vessel</button>}{user&&selected.status!=="paused"&&<button type="button" className="secondary" onClick={stopVoyage}>Stop vessel at current position</button>}
     </aside>}
    </section>
   </main>
